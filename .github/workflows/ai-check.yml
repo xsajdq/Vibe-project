@@ -7,6 +7,7 @@ on:
   push:
     paths:
       - '.github/workflows/ai-check.yml'
+      - '.github/ai-check/**'
 
 permissions:
   contents: read
@@ -39,5 +40,29 @@ jobs:
                 -H "Authorization: Bearer $AI_API_KEY" -H 'Content-Type: application/json' -d "$body")
               echo "$model / effort=$effort → $out → $(head -c 250 resp.txt 2>/dev/null | tr '\n' ' ')"
               rm -f resp.txt
+            done
+          done
+
+      - name: Real worker request (prompt + schema)
+        run: |
+          set +e
+          for model in gemini-2.5-flash gemini-3.5-flash-lite; do
+            for variant in as-is no-effort json-object string-content; do
+              python3 - "$model" "$variant" > body.json <<'PY'
+          import json, sys
+          model, variant = sys.argv[1], sys.argv[2]
+          body = json.load(open('.github/ai-check/request.json'))
+          body['model'] = model
+          if variant == 'no-effort':
+              body.pop('reasoning_effort')
+          if variant == 'json-object':
+              body['response_format'] = {'type': 'json_object'}
+          if variant == 'string-content':
+              body['messages'][1]['content'] = ''.join(p.get('text', '') for p in body['messages'][1]['content'])
+          print(json.dumps(body))
+          PY
+              out=$(curl -s -m 40 -o resp.txt -w '%{http_code} %{time_total}s' "$BASE/chat/completions" \
+                -H "Authorization: Bearer $AI_API_KEY" -H 'Content-Type: application/json' --data @body.json)
+              echo "$model / $variant → $out → $(head -c 400 resp.txt 2>/dev/null | tr '\n' ' ')"
             done
           done

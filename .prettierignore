@@ -4,3 +4,4 @@ coverage
 .wrangler
 package-lock.json
 *.pdf
+.github/ai-check
