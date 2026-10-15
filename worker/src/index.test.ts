@@ -155,6 +155,19 @@ describe('POST /api/analyze', () => {
     expect(body.error.code).toBe('AI_QUOTA');
   });
 
+  it('przechodzi na tryb json_object, gdy dostawca odrzuca json_schema (400)', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('unsupported', { status: 400 }))
+      .mockResolvedValueOnce(completion(modelOutput()));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await handleRequest(analyzeRequest(validBody, ORIGIN, freshIp()), env());
+    expect(response.status).toBe(200);
+    const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(String(init.body)).toContain('"json_object"');
+  });
+
   it('odrzuca niepoprawne dane wejściowe', async () => {
     const response = await handleRequest(
       analyzeRequest({ fileName: '', pages: 'x' }, ORIGIN, freshIp()),

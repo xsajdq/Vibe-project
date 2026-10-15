@@ -20,6 +20,30 @@ interface ChatCompletionResponse {
   choices?: { message?: { content?: string | null } }[];
 }
 
+async function post(
+  env: Env,
+  body: Record<string, unknown>,
+  fetchImpl: typeof fetch,
+): Promise<Response> {
+  try {
+    return await fetchImpl(`${env.AI_BASE_URL.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${env.AI_API_KEY}`,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch {
+    throw new HttpError(
+      504,
+      'AI_UNAVAILABLE',
+      'Usługa AI nie odpowiedziała na czas. Spróbuj ponownie.',
+    );
+  }
+}
+
 export async function chatJson(
   env: Env,
   messages: ChatMessage[],
@@ -35,23 +59,11 @@ export async function chatJson(
   };
   if (env.AI_REASONING_EFFORT) body.reasoning_effort = env.AI_REASONING_EFFORT;
 
-  let response: Response;
-  try {
-    response = await fetchImpl(`${env.AI_BASE_URL.replace(/\/$/, '')}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${env.AI_API_KEY}`,
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-  } catch {
-    throw new HttpError(
-      504,
-      'AI_UNAVAILABLE',
-      'Usługa AI nie odpowiedziała na czas. Spróbuj ponownie.',
-    );
+  let response = await post(env, body, fetchImpl);
+  if (response.status === 400) {
+    // Część dostawców/modeli nie obsługuje json_schema — wtedy zwykły tryb JSON;
+    // zgodność ze schematem i tak egzekwuje walidacja Zod.
+    response = await post(env, { ...body, response_format: { type: 'json_object' } }, fetchImpl);
   }
 
   if (response.status === 429) {
