@@ -107,10 +107,7 @@ Wymagania: Node.js 22+, darmowy klucz Gemini API (https://aistudio.google.com/ap
 npm install
 
 # 1) Backend — sekrety lokalne w worker/.dev.vars (plik ignorowany przez Git)
-cat > worker/.dev.vars <<'EOF'
-AI_API_KEY=twoj-klucz-gemini
-ALLOWED_ORIGINS=http://localhost:5173
-EOF
+cp worker/.dev.vars.example worker/.dev.vars   # uzupełnij AI_API_KEY
 npm run dev:worker          # http://localhost:8787
 
 # 2) Frontend (w drugim terminalu)

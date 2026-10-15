@@ -1,0 +1,4 @@
+# Lokalne zmienne Workera dla `npm run dev:worker`.
+# Skopiuj do worker/.dev.vars (plik jest w .gitignore) i uzupełnij klucz.
+AI_API_KEY=wklej-tutaj-klucz-gemini
+ALLOWED_ORIGINS=http://localhost:5173
