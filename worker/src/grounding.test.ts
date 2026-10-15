@@ -44,11 +44,16 @@ describe('groundOutput', () => {
     expect(removedAmounts).toBe(1);
   });
 
-  it('nie filtruje kwot, gdy część treści pochodzi z OCR', () => {
+  it('przy OCR zachowuje kwoty spoza tekstu, ale oznacza je jako niezweryfikowane', () => {
     const output = aiOutput();
-    output.amounts = [{ value: 13100, currency: 'PLN', context: 'abonament od 2027' }];
-    const { output: grounded } = groundOutput(output, 'Tekst bez tej kwoty.', false);
-    expect(grounded.amounts).toHaveLength(1);
+    output.amounts = [
+      { value: 13100, currency: 'PLN', context: 'abonament od 2027' },
+      { value: 12500, currency: 'PLN', context: 'wynagrodzenie' },
+    ];
+    const result = groundOutput(output, 'Wynagrodzenie 12 500 zł.', false);
+    expect(result.output.amounts).toHaveLength(2);
+    expect(result.unverifiedAmounts).toBe(1);
+    expect(result.removedAmounts).toBe(0);
   });
 
   it('usuwa duplikaty encji, słów kluczowych, kwot i dat', () => {

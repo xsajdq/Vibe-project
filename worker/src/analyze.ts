@@ -130,7 +130,11 @@ export async function analyzeDocument(
   }
 
   const sourceText = request.pages.map((page) => page.text).join('\n');
-  const { output, removedAmounts } = groundOutput(combined, sourceText, !hasScans);
+  const { output, removedAmounts, unverifiedAmounts } = groundOutput(
+    combined,
+    sourceText,
+    !hasScans,
+  );
 
   // Po scaleniu listy mogą przekroczyć limity schematu — przycinamy deterministycznie.
   output.amounts = output.amounts.slice(0, AMOUNTS_MAX);
@@ -141,6 +145,11 @@ export async function analyzeDocument(
   if (removedAmounts > 0) {
     warnings.push(
       `Pominięto ${removedAmounts} kwot(y), których nie udało się potwierdzić w tekście dokumentu.`,
+    );
+  }
+  if (unverifiedAmounts > 0) {
+    warnings.push(
+      `${unverifiedAmounts} kwot(y) nie występuje w warstwie tekstowej — pochodzą prawdopodobnie ze skanu (OCR). Zweryfikuj je.`,
     );
   }
   if (hasScans) {

@@ -20,7 +20,7 @@ const MULTIPLIERS: Record<string, number> = {
 export function extractNumbers(text: string): Set<number> {
   const normalized = text
     // separatory tysięcy: spacja, twarda spacja, wąska spacja, kropka, apostrof
-    .replace(/(?<=\d)[\s  .'](?=\d{3}(?!\d))/g, '')
+    .replace(/(?<=\d)[\s\u00a0\u202f.'](?=\d{3}(?!\d))/g, '')
     // przecinek dziesiętny → kropka
     .replace(/(?<=\d),(?=\d)/g, '.');
 
@@ -61,27 +61,34 @@ function dedupeStrings(values: readonly string[]): string[] {
 
 export interface GroundingResult {
   output: AiOutput;
+  /** Kwoty usunięte, bo nie występują w tekście (tryb weryfikacji). */
   removedAmounts: number;
+  /** Kwoty nieobecne w warstwie tekstowej, zachowane, bo mogą pochodzić z OCR skanów. */
+  unverifiedAmounts: number;
 }
 
 /**
  * Usuwa kwoty nieobecne w tekście oraz duplikaty. Gdy część treści pochodzi ze skanów
- * (OCR wykonuje model), nie mamy pełnego tekstu do porównania — wtedy kwot nie filtrujemy.
+ * (OCR wykonuje model), nie mamy pełnego tekstu do porównania — wtedy takie kwoty
+ * zachowujemy, ale zliczamy jako niezweryfikowane (UI pokazuje ostrzeżenie).
  */
 export function groundOutput(
   output: AiOutput,
   sourceText: string,
   canVerifyAmounts: boolean,
 ): GroundingResult {
-  const numbers =
-    canVerifyAmounts && sourceText.trim().length > 0 ? extractNumbers(sourceText) : null;
+  const numbers = extractNumbers(sourceText);
 
   const seenAmounts = new Set<string>();
   let removedAmounts = 0;
+  let unverifiedAmounts = 0;
   const amounts = output.amounts.filter((amount) => {
-    if (numbers && !hasNumber(numbers, amount.value)) {
-      removedAmounts += 1;
-      return false;
+    if (!hasNumber(numbers, amount.value)) {
+      if (canVerifyAmounts) {
+        removedAmounts += 1;
+        return false;
+      }
+      unverifiedAmounts += 1;
     }
     const key = `${amount.value}|${amount.currency}|${amount.context.toLocaleLowerCase()}`;
     if (seenAmounts.has(key)) return false;
@@ -99,6 +106,7 @@ export function groundOutput(
 
   return {
     removedAmounts,
+    unverifiedAmounts,
     output: {
       ...output,
       entities: {
