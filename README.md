@@ -135,7 +135,7 @@ Skrypty: `npm run lint`, `npm run format:check`, `npm run typecheck`, `npm test`
 
 ## Wdrożenie (GitHub Actions)
 
-Dwa workflowy uruchamiane po pushu do `main`:
+Dwa workflowy; publikacja odbywa się tylko z domyślnej gałęzi repozytorium:
 
 - **`deploy.yml`** — `lint › build › deploy`: Prettier, ESLint, `tsc` (strict), Vitest, build Vite
   i publikacja na GitHub Pages.

@@ -2,7 +2,6 @@ name: Deploy API (Cloudflare Worker)
 
 on:
   push:
-    branches: [main]
     paths:
       - 'worker/**'
       - 'shared/**'
@@ -32,6 +31,7 @@ jobs:
 
       - name: Check Cloudflare secrets
         id: check
+        if: github.ref_name == github.event.repository.default_branch
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
@@ -44,7 +44,7 @@ jobs:
 
       # Klucz AI trafia do Cloudflare jako secret Workera — nigdy do kodu ani do builda frontendu.
       - name: Deploy
-        if: steps.check.outputs.enabled == 'true'
+        if: steps.check.outputs.enabled == 'true' && github.ref_name == github.event.repository.default_branch
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
