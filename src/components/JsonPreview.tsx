@@ -18,7 +18,7 @@ export function JsonPreview({ insight }: { insight: Insight }) {
   };
 
   return (
-    <details className="card json-preview">
+    <details className="json-preview">
       <summary>Podgląd JSON</summary>
       <div className="json-preview__toolbar">
         <button

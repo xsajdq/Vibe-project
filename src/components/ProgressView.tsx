@@ -6,6 +6,7 @@ interface Props {
   step: Step;
   detail: string;
   startedAt: number;
+  model: string | null;
   onCancel: () => void;
 }
 
@@ -16,7 +17,7 @@ const STEPS: { id: Step; label: string }[] = [
 ];
 
 /** F-06: stan ładowania z krokami przepływu i licznikiem czasu. */
-export function ProgressView({ fileName, step, detail, startedAt, onCancel }: Props) {
+export function ProgressView({ fileName, step, detail, startedAt, model, onCancel }: Props) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 500);
@@ -27,42 +28,48 @@ export function ProgressView({ fileName, step, detail, startedAt, onCancel }: Pr
   const seconds = Math.max(0, Math.floor((now - startedAt) / 1000));
 
   return (
-    <section className="card progress" aria-busy="true" aria-labelledby="progress-title">
-      <div className="progress__header">
-        <span className="spinner" aria-hidden="true" />
-        <div>
-          <h2 id="progress-title" className="progress__title">
-            Analizuję dokument
-          </h2>
-          <p className="muted file-name">{fileName}</p>
-        </div>
+    <section className="terminal progress" aria-busy="true" aria-labelledby="progress-title">
+      <div className="terminal__bar">
+        <span className="terminal__dots" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+        <span className="file-name">{fileName}</span>
         <span className="progress__timer" aria-label={`Upłynęło ${seconds} sekund`}>
-          {seconds} s
+          {seconds}s
         </span>
       </div>
-      <ol className="steps">
-        {STEPS.map((s, index) => {
-          const status =
-            index < currentIndex ? 'done' : index === currentIndex ? 'current' : 'todo';
-          return (
-            <li key={s.id} className={`steps__item steps__item--${status}`}>
-              <span className="steps__marker" aria-hidden="true">
-                {status === 'done' ? '✓' : index + 1}
-              </span>
-              <span>
+      <div className="terminal__body">
+        <h2 id="progress-title" className="heading">
+          Analizuję <span className="accent">dokument</span>
+        </h2>
+        <ol className="steps mono">
+          {STEPS.map((s, index) => {
+            const status =
+              index < currentIndex ? 'done' : index === currentIndex ? 'current' : 'todo';
+            return (
+              <li key={s.id} className={`steps__item steps__item--${status}`}>
+                <span aria-hidden="true">
+                  {status === 'done' ? '[✓]' : status === 'current' ? '[›]' : '[ ]'}
+                </span>{' '}
                 {s.label}
                 {status === 'current' && <span className="visually-hidden"> (w toku)</span>}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-      <p className="progress__detail" role="status" aria-live="polite">
-        {detail}
-      </p>
-      <button type="button" className="button button--ghost" onClick={onCancel}>
-        Anuluj
-      </button>
+              </li>
+            );
+          })}
+        </ol>
+        <p className="progress__detail mono" role="status" aria-live="polite">
+          <span className="accent">$</span> {detail}
+          <span className="cursor" aria-hidden="true" />
+        </p>
+        <p className="hint">Model: {model ?? 'automatycznie'}</p>
+        <div className="actions">
+          <button type="button" className="button button--ghost" onClick={onCancel}>
+            Anuluj
+          </button>
+        </div>
+      </div>
     </section>
   );
 }

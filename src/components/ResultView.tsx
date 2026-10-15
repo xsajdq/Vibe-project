@@ -17,20 +17,25 @@ interface Props {
   onReset: () => void;
 }
 
-function Section({
+function Card({
+  index,
   title,
   count,
+  wide = false,
   children,
 }: {
+  index: number;
   title: string;
   count?: number;
+  wide?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section className="card section">
-      <h3 className="section__title">
+    <section className={`card${wide ? ' card--wide' : ''}`}>
+      <h3 className="card__title">
+        <span className="card__index mono">{String(index).padStart(2, '0')}</span>
         {title}
-        {count !== undefined && <span className="badge">{count}</span>}
+        {count !== undefined && <span className="badge mono">{count}</span>}
       </h3>
       {children}
     </section>
@@ -63,40 +68,42 @@ export function ResultView({ insight, durationMs, onReset }: Props) {
 
   return (
     <div className="result">
-      <section className="card result__header" aria-labelledby="result-title">
-        <div className="result__meta">
-          <span className="pill">{DOCUMENT_TYPE_LABELS[doc.type]}</span>
-          <span className="muted">
-            {pagesLabel(doc.pages)}
-            {' · '}
-            {languageName(doc.language)}
-            {doc.date && <> · {formatDate(doc.date)}</>}
-            {durationMs !== null && (
-              <> · analiza {(durationMs / 1000).toFixed(1).replace('.', ',')} s</>
-            )}
-          </span>
-        </div>
+      <section className="result__header" aria-labelledby="result-title">
+        <ul className="chips mono" aria-label="Metadane dokumentu">
+          <li className="chip chip--accent">{DOCUMENT_TYPE_LABELS[doc.type]}</li>
+          <li className="chip">{pagesLabel(doc.pages)}</li>
+          <li className="chip">{languageName(doc.language)}</li>
+          {doc.date && <li className="chip">{formatDate(doc.date)}</li>}
+          {durationMs !== null && (
+            <li className="chip">{(durationMs / 1000).toFixed(1).replace('.', ',')} s</li>
+          )}
+          {meta && <li className="chip">{meta.model}</li>}
+        </ul>
         <h2 id="result-title" ref={headingRef} tabIndex={-1} className="result__title">
           {doc.title ?? doc.fileName}
         </h2>
-        {doc.title && <p className="muted file-name">{doc.fileName}</p>}
-        <p className="summary">{insight.summary}</p>
+        {doc.title && <p className="file-name mono">{doc.fileName}</p>}
+        <div className="summary">
+          <span className="label">Podsumowanie</span>
+          <p>{insight.summary}</p>
+        </div>
         <div className="actions">
           <button
             type="button"
             className="button button--primary"
             onClick={() => downloadJson(insight)}
           >
-            Pobierz JSON
+            Pobierz JSON ↓
           </button>
           <button type="button" className="button button--ghost" onClick={onReset}>
-            Analizuj kolejny plik
+            Analizuj kolejny
           </button>
         </div>
       </section>
 
       {meta && meta.warnings.length > 0 && (
-        <section className="card warnings" aria-label="Uwagi do analizy">
+        <section className="warnings" aria-label="Uwagi do analizy">
+          <span className="label label--ink">Uwaga</span>
           <ul>
             {meta.warnings.map((warning) => (
               <li key={warning}>{warning}</li>
@@ -105,16 +112,22 @@ export function ResultView({ insight, durationMs, onReset }: Props) {
         </section>
       )}
 
+      <div className="section-head">
+        <h2 className="heading">
+          Wyodrębnione <span className="accent">dane</span>
+        </h2>
+      </div>
+
       <div className="grid">
-        <Section title="Najważniejsze punkty" count={insight.keyPoints.length}>
+        <Card index={1} title="Najważniejsze punkty" count={insight.keyPoints.length}>
           <ul className="list">
             {insight.keyPoints.map((point) => (
               <li key={point}>{point}</li>
             ))}
           </ul>
-        </Section>
+        </Card>
 
-        <Section title="Kwoty" count={insight.amounts.length}>
+        <Card index={2} title="Kwoty" count={insight.amounts.length}>
           {insight.amounts.length === 0 ? (
             <Empty />
           ) : (
@@ -137,35 +150,35 @@ export function ResultView({ insight, durationMs, onReset }: Props) {
               </table>
             </div>
           )}
-        </Section>
+        </Card>
 
-        <Section title="Daty" count={insight.dates.length}>
+        <Card index={3} title="Daty" count={insight.dates.length}>
           {insight.dates.length === 0 ? (
             <Empty />
           ) : (
             <ul className="list list--dates">
               {insight.dates.map((entry, index) => (
                 <li key={`${entry.date}-${index}`}>
-                  <time dateTime={entry.date} className="date">
-                    {formatDate(entry.date)}
+                  <time dateTime={entry.date} className="date mono">
+                    {entry.date}
                   </time>
                   <span>{entry.context}</span>
                 </li>
               ))}
             </ul>
           )}
-        </Section>
+        </Card>
 
-        <Section title="Podmioty">
+        <Card index={4} title="Podmioty">
           <h4 className="subheading">Organizacje</h4>
           <TagList items={insight.entities.organizations} />
           <h4 className="subheading">Osoby</h4>
           <TagList items={insight.entities.people} />
-        </Section>
+        </Card>
 
-        <Section title="Słowa kluczowe" count={insight.keywords.length}>
+        <Card index={5} title="Słowa kluczowe" count={insight.keywords.length} wide>
           <TagList items={insight.keywords} />
-        </Section>
+        </Card>
       </div>
 
       <JsonPreview insight={insight} />

@@ -13,23 +13,26 @@ export function HistoryList({ entries, onOpen, onRemove, onClear }: Props) {
   if (entries.length === 0) return null;
 
   return (
-    <section className="card history" aria-labelledby="history-title">
-      <div className="history__header">
-        <h2 id="history-title" className="section__title">
-          Ostatnie analizy
+    <section className="history" aria-labelledby="history-title">
+      <div className="section-head">
+        <h2 id="history-title" className="heading">
+          Ostatnie <span className="accent">analizy</span>
         </h2>
         <button type="button" className="button button--ghost button--small" onClick={onClear}>
           Wyczyść historię
         </button>
       </div>
       <ul className="history__list">
-        {entries.map((entry) => (
+        {entries.map((entry, index) => (
           <li key={entry.id} className="history__item">
+            <span className="history__index mono" aria-hidden="true">
+              {String(index + 1).padStart(2, '0')}
+            </span>
             <button type="button" className="history__open" onClick={() => onOpen(entry)}>
               <span className="history__name">
                 {entry.insight.document.title ?? entry.insight.document.fileName}
               </span>
-              <span className="muted history__details">
+              <span className="history__details mono">
                 {DOCUMENT_TYPE_LABELS[entry.insight.document.type]} ·{' '}
                 {entry.insight.document.fileName} · {formatDateTime(entry.savedAt)}
               </span>

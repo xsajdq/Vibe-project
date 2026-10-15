@@ -49,11 +49,12 @@ export function Dropzone({ onFile, onReject, disabled = false }: Props) {
 
   return (
     <div
-      className={`dropzone${dragging ? ' dropzone--active' : ''}${disabled ? ' dropzone--disabled' : ''}`}
+      className={`terminal dropzone${dragging ? ' dropzone--active' : ''}${disabled ? ' dropzone--disabled' : ''}`}
       role="button"
       tabIndex={disabled ? -1 : 0}
-      aria-disabled={disabled}
+      aria-label="Wgraj plik PDF: przeciągnij plik lub naciśnij Enter, aby wybrać z dysku"
       aria-describedby={hintId}
+      aria-disabled={disabled}
       onClick={open}
       onKeyDown={onKeyDown}
       onDragOver={onDragOver}
@@ -61,25 +62,28 @@ export function Dropzone({ onFile, onReject, disabled = false }: Props) {
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
     >
-      <svg className="dropzone__icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M12 18v-6M9 15l3-3 3 3"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-      <p className="dropzone__title">
-        {dragging ? 'Upuść plik tutaj' : 'Przeciągnij plik PDF tutaj'}
-      </p>
-      <p className="dropzone__subtitle">
-        lub <span className="link-like">wybierz z dysku</span>
-      </p>
-      <p id={hintId} className="dropzone__hint">
-        Tylko PDF, maks. {formatBytes(LIMITS.maxFileBytes)}
-      </p>
+      <div className="terminal__bar" aria-hidden="true">
+        <span className="terminal__dots">
+          <i />
+          <i />
+          <i />
+        </span>
+        <span>root@pdf-insight:~</span>
+      </div>
+      <div className="terminal__body">
+        <p className="mono" aria-hidden="true">
+          <span className="accent">$</span> upload --type pdf --max{' '}
+          {formatBytes(LIMITS.maxFileBytes)}
+        </p>
+        <p className="dropzone__title">{dragging ? 'Upuść plik' : 'Przeciągnij PDF tutaj'}</p>
+        <span className="button button--primary dropzone__button" aria-hidden="true">
+          Wybierz plik
+        </span>
+        <p id={hintId} className="dropzone__hint mono">
+          Tylko PDF · maks. {formatBytes(LIMITS.maxFileBytes)}
+          <span className="cursor" aria-hidden="true" />
+        </p>
+      </div>
       <input
         ref={inputRef}
         type="file"
