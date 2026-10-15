@@ -13,8 +13,14 @@ export type AnalysisState =
   | { status: 'error'; fileName: string | null; message: string; retryable: boolean }
   | { status: 'done'; insight: Insight; durationMs: number | null };
 
-export function useAnalysis(onSuccess: (insight: Insight) => void) {
+/**
+ * @param model preferowany model AI (null = automatycznie, decyduje backend).
+ */
+export function useAnalysis(onSuccess: (insight: Insight) => void, model: string | null) {
   const [state, setState] = useState<AnalysisState>({ status: 'idle' });
+  // Ref, aby „Spróbuj ponownie” po zmianie modelu użył już nowego wyboru.
+  const modelRef = useRef(model);
+  modelRef.current = model;
   const lastFile = useRef<File | null>(null);
   const controller = useRef<AbortController | null>(null);
 
@@ -59,6 +65,7 @@ export function useAnalysis(onSuccess: (insight: Insight) => void) {
             pageCount: extracted.pageCount,
             pages: extracted.pages,
             scans: extracted.scans,
+            ...(modelRef.current ? { model: modelRef.current } : {}),
           },
           abort.signal,
         );
