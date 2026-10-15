@@ -1,0 +1,44 @@
+name: AI provider smoke test
+
+# Diagnostyka połączenia z API AI (bez ujawniania klucza): lista modeli, czas odpowiedzi
+# i status dla trybów odpowiedzi używanych przez Workera.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/ai-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      AI_API_KEY: ${{ secrets.AI_API_KEY }}
+      BASE: https://generativelanguage.googleapis.com/v1beta/openai
+    steps:
+      - name: Key present
+        run: '[ -n "$AI_API_KEY" ] && echo "AI_API_KEY: ustawiony (${#AI_API_KEY} znaków)" || echo "AI_API_KEY: BRAK"'
+
+      - name: Available flash models
+        run: |
+          curl -s -m 30 "$BASE/models" -H "Authorization: Bearer $AI_API_KEY" \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print('\n'.join(sorted(m['id'] for m in d.get('data',[]) if 'flash' in m['id'])) or d)"
+
+      - name: Chat completions
+        run: |
+          for model in gemini-3.8-flash gemini-3.6-flash gemini-3.5-flash-lite gemini-flash-latest; do
+            for mode in plain json_object json_schema; do
+              case $mode in
+                plain) rf='' ;;
+                json_object) rf=',"response_format":{"type":"json_object"}' ;;
+                json_schema) rf=',"response_format":{"type":"json_schema","json_schema":{"name":"t","strict":true,"schema":{"type":"object","additionalProperties":false,"required":["a","b"],"properties":{"a":{"type":"string"},"b":{"type":["string","null"]}}}}}' ;;
+              esac
+              body='{"model":"'$model'","reasoning_effort":"low","messages":[{"role":"user","content":"Zwróć JSON {\"a\":\"ok\",\"b\":null}"}]'$rf'}'
+              out=$(curl -s -m 60 -o resp.txt -w '%{http_code} %{time_total}s' "$BASE/chat/completions" \
+                -H "Authorization: Bearer $AI_API_KEY" -H 'Content-Type: application/json' -d "$body")
+              echo "$model / $mode → $out → $(head -c 300 resp.txt | tr '\n' ' ')"
+            done
+          done
