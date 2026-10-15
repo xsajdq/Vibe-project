@@ -29,16 +29,15 @@ jobs:
 
       - name: Chat completions
         run: |
-          for model in gemini-3.8-flash gemini-3.6-flash gemini-3.5-flash-lite gemini-flash-latest; do
-            for mode in plain json_object json_schema; do
-              case $mode in
-                plain) rf='' ;;
-                json_object) rf=',"response_format":{"type":"json_object"}' ;;
-                json_schema) rf=',"response_format":{"type":"json_schema","json_schema":{"name":"t","strict":true,"schema":{"type":"object","additionalProperties":false,"required":["a","b"],"properties":{"a":{"type":"string"},"b":{"type":["string","null"]}}}}}' ;;
-              esac
-              body='{"model":"'$model'","reasoning_effort":"low","messages":[{"role":"user","content":"Zwróć JSON {\"a\":\"ok\",\"b\":null}"}]'$rf'}'
-              out=$(curl -s -m 60 -o resp.txt -w '%{http_code} %{time_total}s' "$BASE/chat/completions" \
+          set +e
+          schema=',"response_format":{"type":"json_schema","json_schema":{"name":"t","strict":true,"schema":{"type":"object","additionalProperties":false,"required":["a","b"],"properties":{"a":{"type":"string"},"b":{"type":["string","null"]}}}}}'
+          for model in gemini-3.8-flash gemini-3.7-flash gemini-3.6-flash gemini-3.5-flash gemini-3.5-flash-lite gemini-flash-latest gemini-2.5-flash; do
+            for effort in none low; do
+              [ "$effort" = none ] && re='' || re=',"reasoning_effort":"low"'
+              body='{"model":"'$model'"'$re',"messages":[{"role":"user","content":"Zwróć JSON {\"a\":\"ok\",\"b\":null}"}]'$schema'}'
+              out=$(curl -s -m 25 -o resp.txt -w '%{http_code} %{time_total}s' "$BASE/chat/completions" \
                 -H "Authorization: Bearer $AI_API_KEY" -H 'Content-Type: application/json' -d "$body")
-              echo "$model / $mode → $out → $(head -c 300 resp.txt | tr '\n' ' ')"
+              echo "$model / effort=$effort → $out → $(head -c 250 resp.txt 2>/dev/null | tr '\n' ' ')"
+              rm -f resp.txt
             done
           done
