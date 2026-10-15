@@ -10,7 +10,9 @@ head_sampling_rate = 1
 
 [vars]
 AI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
-AI_MODEL = "gemini-3.8-flash"
+AI_MODEL = "gemini-2.5-flash"
+# Zapasowe modele przy przeciążeniu (503) / limicie (429) / braku odpowiedzi modelu głównego.
+AI_FALLBACK_MODELS = "gemini-3.5-flash-lite"
 AI_REASONING_EFFORT = "low"
 # Tylko domena demo (GitHub Pages). Dla dev lokalnego nadpisz w worker/.dev.vars.
 ALLOWED_ORIGINS = "https://xsajdq.github.io"

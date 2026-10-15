@@ -168,6 +168,47 @@ describe('POST /api/analyze', () => {
     expect(String(init.body)).toContain('"json_object"');
   });
 
+  it('przełącza się na model zapasowy, gdy główny jest przeciążony (503)', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('overloaded', { status: 503 }))
+      .mockResolvedValueOnce(completion(modelOutput()));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await handleRequest(
+      analyzeRequest(validBody, ORIGIN, freshIp()),
+      env({ AI_FALLBACK_MODELS: 'backup-model' }),
+    );
+    expect(response.status).toBe(200);
+    const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(String(init.body)).toContain('"model":"backup-model"');
+    const result = insightSchema.parse(await response.json());
+    expect(result.meta?.model).toBe('backup-model');
+  });
+
+  it('przełącza się na model zapasowy po przekroczeniu czasu odpowiedzi', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new DOMException('timeout', 'TimeoutError'))
+      .mockResolvedValueOnce(completion(modelOutput()));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await handleRequest(
+      analyzeRequest(validBody, ORIGIN, freshIp()),
+      env({ AI_FALLBACK_MODELS: 'backup-model' }),
+    );
+    expect(response.status).toBe(200);
+  });
+
+  it('zwraca 504, gdy żaden model nie odpowiada', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new DOMException('timeout', 'TimeoutError')));
+    const response = await handleRequest(
+      analyzeRequest(validBody, ORIGIN, freshIp()),
+      env({ AI_FALLBACK_MODELS: 'backup-model' }),
+    );
+    expect(response.status).toBe(504);
+  });
+
   it('odrzuca niepoprawne dane wejściowe', async () => {
     const response = await handleRequest(
       analyzeRequest({ fileName: '', pages: 'x' }, ORIGIN, freshIp()),

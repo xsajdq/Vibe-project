@@ -66,6 +66,8 @@ worker/            backend (Cloudflare Worker)
   wbudowany Rate Limiting binding, deploy z GitHub Actions.
 - **Ekstrakcja tekstu w przeglądarce, nie na serwerze** — do API trafia tylko tekst (dziesiątki KB
   zamiast 10 MB pliku), co jest szybsze i mieści się w limitach CPU Workera.
+- **Model zapasowy** — darmowe modele bywają przeciążone (HTTP 503 / brak odpowiedzi); Worker
+  automatycznie przełącza się wtedy na kolejny model z `AI_FALLBACK_MODELS`.
 - **Gemini przez endpoint zgodny z OpenAI** — darmowy limit, model multimodalny (OCR skanów bez
   dodatkowych bibliotek), structured output. Zmiana dostawcy (np. Groq, OpenRouter) to tylko
   zmienne `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY` — bez zmian w kodzie.
@@ -120,15 +122,16 @@ Skrypty: `npm run lint`, `npm run format:check`, `npm run typecheck`, `npm test`
 
 ### Zmienne środowiskowe
 
-| Zmienna               | Gdzie                    | Opis                                                                 |
-| --------------------- | ------------------------ | -------------------------------------------------------------------- |
-| `VITE_API_URL`        | frontend (build)         | adres Workera, np. `https://pdf-insight-api.<konto>.workers.dev`     |
-| `VITE_BASE`           | frontend (build)         | opcjonalnie; domyślnie `/Vibe-project/`, w CI ustawiane z nazwy repo |
-| `AI_API_KEY`          | Worker — **secret**      | klucz API dostawcy LLM                                               |
-| `AI_BASE_URL`         | Worker (`wrangler.toml`) | endpoint zgodny z OpenAI; domyślnie Gemini `…/v1beta/openai`         |
-| `AI_MODEL`            | Worker (`wrangler.toml`) | domyślnie `gemini-3.8-flash`                                         |
-| `AI_REASONING_EFFORT` | Worker (`wrangler.toml`) | `low` — krótszy czas odpowiedzi                                      |
-| `ALLOWED_ORIGINS`     | Worker                   | dozwolone originy (CSV); w CI: `https://<właściciel>.github.io`      |
+| Zmienna               | Gdzie                    | Opis                                                                     |
+| --------------------- | ------------------------ | ------------------------------------------------------------------------ |
+| `VITE_API_URL`        | frontend (build)         | adres Workera, np. `https://pdf-insight-api.<konto>.workers.dev`         |
+| `VITE_BASE`           | frontend (build)         | opcjonalnie; domyślnie `/Vibe-project/`, w CI ustawiane z nazwy repo     |
+| `AI_API_KEY`          | Worker — **secret**      | klucz API dostawcy LLM                                                   |
+| `AI_BASE_URL`         | Worker (`wrangler.toml`) | endpoint zgodny z OpenAI; domyślnie Gemini `…/v1beta/openai`             |
+| `AI_MODEL`            | Worker (`wrangler.toml`) | domyślnie `gemini-2.5-flash`                                             |
+| `AI_FALLBACK_MODELS`  | Worker (`wrangler.toml`) | modele zapasowe (CSV) przy przeciążeniu/limicie; `gemini-3.5-flash-lite` |
+| `AI_REASONING_EFFORT` | Worker (`wrangler.toml`) | `low` — krótszy czas odpowiedzi                                          |
+| `ALLOWED_ORIGINS`     | Worker                   | dozwolone originy (CSV); w CI: `https://<właściciel>.github.io`          |
 
 ## Wdrożenie (GitHub Actions)
 

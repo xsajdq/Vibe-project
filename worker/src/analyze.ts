@@ -41,9 +41,10 @@ export async function generateValidated(
   env: Env,
   content: ContentPart[],
   fetchImpl?: typeof fetch,
+  usedModels?: Set<string>,
 ): Promise<AiOutput> {
   const messages: ChatMessage[] = [{ role: 'user', content }];
-  const first = await chatJson(env, messages, fetchImpl);
+  const first = await chatJson(env, messages, fetchImpl, usedModels);
   const firstResult = validate(first);
   if (firstResult.ok) return firstResult.value;
 
@@ -58,7 +59,7 @@ export async function generateValidated(
         '\nZwróć poprawiony, kompletny JSON zgodny ze schematem i zasadami. Bez komentarzy.',
     },
   ];
-  const second = await chatJson(env, retryMessages, fetchImpl);
+  const second = await chatJson(env, retryMessages, fetchImpl, usedModels);
   const secondResult = validate(second);
   if (secondResult.ok) return secondResult.value;
 
@@ -106,6 +107,8 @@ export async function analyzeDocument(
     total: work.length,
   };
 
+  const usedModels = new Set<string>();
+
   // F-08: fragmenty analizowane równolegle (skany dołączone do pierwszego fragmentu).
   const partials = await Promise.all(
     work.map((pages, index) =>
@@ -113,6 +116,7 @@ export async function analyzeDocument(
         env,
         buildChunkContent(pages, index === 0 ? request.scans : [], { ...baseInfo, index }),
         deps.fetchImpl,
+        usedModels,
       ),
     ),
   );
@@ -125,6 +129,7 @@ export async function analyzeDocument(
       env,
       buildMergeContent(partials, { ...baseInfo, index: 0 }),
       deps.fetchImpl,
+      usedModels,
     );
     combined = { ...merged, ...unionLists(partials) };
   }
@@ -176,7 +181,7 @@ export async function analyzeDocument(
     dates: output.dates,
     keywords: output.keywords,
     meta: {
-      model: env.AI_MODEL,
+      model: [...usedModels].join(', ') || env.AI_MODEL,
       generatedAt: now.toISOString(),
       chunks: work.length,
       ocrPages: request.scans.map((scan) => scan.page),

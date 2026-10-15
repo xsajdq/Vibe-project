@@ -4,6 +4,8 @@ export interface Env {
   /** Bazowy URL API zgodnego z OpenAI Chat Completions (domyślnie Gemini). */
   AI_BASE_URL: string;
   AI_MODEL: string;
+  /** Opcjonalnie: modele zapasowe (CSV), używane przy przeciążeniu/limicie modelu głównego. */
+  AI_FALLBACK_MODELS?: string;
   /** Opcjonalnie: "low" | "medium" | "high" — przekazywane jako reasoning_effort. */
   AI_REASONING_EFFORT?: string;
   /** Lista dozwolonych originów, rozdzielona przecinkami. */
