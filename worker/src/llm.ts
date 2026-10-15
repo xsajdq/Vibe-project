@@ -21,10 +21,28 @@ interface ChatCompletionResponse {
   choices?: { message?: { content?: string | null } }[];
 }
 
-/** Model główny + zapasowe (AI_FALLBACK_MODELS, rozdzielone przecinkami), bez duplikatów. */
+/** Dozwolone modele: główny + zapasowe (AI_FALLBACK_MODELS, CSV), bez duplikatów. */
 export function modelChain(env: Env): string[] {
   const fallbacks = (env.AI_FALLBACK_MODELS ?? '').split(',').map((m) => m.trim());
   return [...new Set([env.AI_MODEL, ...fallbacks].filter((m) => m.length > 0))];
+}
+
+/**
+ * Kolejność prób dla żądania: model wybrany przez użytkownika (tylko z listy dozwolonych)
+ * na początku, potem pozostałe jako zapasowe.
+ */
+export function preferredChain(env: Env, preferred: string | undefined): string[] {
+  const chain = modelChain(env);
+  if (!preferred || !chain.includes(preferred)) return chain;
+  return [preferred, ...chain.filter((model) => model !== preferred)];
+}
+
+export interface CallContext {
+  /** Modele w kolejności prób. */
+  models: readonly string[];
+  /** Faktycznie użyte modele (do pola meta.model). */
+  usedModels: Set<string>;
+  fetchImpl?: typeof fetch;
 }
 
 async function post(
@@ -47,25 +65,33 @@ async function post(
   }
 }
 
-/** Błędy, przy których warto spróbować innego modelu (przeciążenie, limit, awaria, timeout). */
-function isTransient(response: Response | null): boolean {
-  return response === null || response.status === 429 || response.status >= 500;
+/**
+ * Błędy, przy których warto spróbować innego modelu: przeciążenie (503), limit (429),
+ * awaria (5xx), timeout, a także 404 (model wycofany lub niedostępny dla klucza).
+ */
+function shouldTryNextModel(response: Response | null): boolean {
+  return (
+    response === null ||
+    response.status === 404 ||
+    response.status === 429 ||
+    response.status >= 500
+  );
 }
 
 /**
  * Wywołuje model i zwraca treść odpowiedzi (JSON jako tekst). Darmowe modele bywają
  * przeciążone (503 / brak odpowiedzi), więc przy błędach przejściowych próbujemy kolejnego
- * modelu z łańcucha. `usedModels` zbiera faktycznie użyte modele (do pola meta.model).
+ * modelu z `ctx.models`.
  */
 export async function chatJson(
   env: Env,
   messages: ChatMessage[],
-  fetchImpl: typeof fetch = fetch,
-  usedModels?: Set<string>,
+  ctx: CallContext,
 ): Promise<string> {
+  const fetchImpl = ctx.fetchImpl ?? fetch;
   let last: Response | null = null;
 
-  for (const model of modelChain(env)) {
+  for (const model of ctx.models) {
     const body: Record<string, unknown> = {
       model,
       messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
@@ -83,7 +109,7 @@ export async function chatJson(
       response = await post(env, { ...body, response_format: { type: 'json_object' } }, fetchImpl);
     }
     last = response;
-    if (isTransient(response)) continue;
+    if (shouldTryNextModel(response)) continue;
     if (!response?.ok) break;
 
     let data: ChatCompletionResponse;
@@ -92,7 +118,7 @@ export async function chatJson(
     } catch {
       continue;
     }
-    usedModels?.add(model);
+    ctx.usedModels.add(model);
     const content = data.choices?.[0]?.message?.content;
     return typeof content === 'string' ? content : '';
   }

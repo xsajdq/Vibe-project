@@ -11,8 +11,8 @@ import { chunkPages } from './chunk.ts';
 import type { Env } from './env.ts';
 import { groundOutput } from './grounding.ts';
 import { HttpError } from './http.ts';
-import type { ChatMessage } from './llm.ts';
-import { chatJson, parseModelJson } from './llm.ts';
+import type { CallContext, ChatMessage } from './llm.ts';
+import { chatJson, parseModelJson, preferredChain } from './llm.ts';
 import type { ChunkInfo, ContentPart } from './prompt.ts';
 import { buildChunkContent, buildMergeContent } from './prompt.ts';
 
@@ -40,11 +40,10 @@ function validate(content: string): ValidationResult {
 export async function generateValidated(
   env: Env,
   content: ContentPart[],
-  fetchImpl?: typeof fetch,
-  usedModels?: Set<string>,
+  ctx: CallContext,
 ): Promise<AiOutput> {
   const messages: ChatMessage[] = [{ role: 'user', content }];
-  const first = await chatJson(env, messages, fetchImpl, usedModels);
+  const first = await chatJson(env, messages, ctx);
   const firstResult = validate(first);
   if (firstResult.ok) return firstResult.value;
 
@@ -59,7 +58,7 @@ export async function generateValidated(
         '\nZwróć poprawiony, kompletny JSON zgodny ze schematem i zasadami. Bez komentarzy.',
     },
   ];
-  const second = await chatJson(env, retryMessages, fetchImpl, usedModels);
+  const second = await chatJson(env, retryMessages, ctx);
   const secondResult = validate(second);
   if (secondResult.ok) return secondResult.value;
 
@@ -107,7 +106,11 @@ export async function analyzeDocument(
     total: work.length,
   };
 
-  const usedModels = new Set<string>();
+  const ctx: CallContext = {
+    models: preferredChain(env, request.model),
+    usedModels: new Set<string>(),
+    ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
+  };
 
   // F-08: fragmenty analizowane równolegle (skany dołączone do pierwszego fragmentu).
   const partials = await Promise.all(
@@ -115,8 +118,7 @@ export async function analyzeDocument(
       generateValidated(
         env,
         buildChunkContent(pages, index === 0 ? request.scans : [], { ...baseInfo, index }),
-        deps.fetchImpl,
-        usedModels,
+        ctx,
       ),
     ),
   );
@@ -128,8 +130,7 @@ export async function analyzeDocument(
     const merged = await generateValidated(
       env,
       buildMergeContent(partials, { ...baseInfo, index: 0 }),
-      deps.fetchImpl,
-      usedModels,
+      ctx,
     );
     combined = { ...merged, ...unionLists(partials) };
   }
@@ -181,7 +182,7 @@ export async function analyzeDocument(
     dates: output.dates,
     keywords: output.keywords,
     meta: {
-      model: [...usedModels].join(', ') || env.AI_MODEL,
+      model: [...ctx.usedModels].join(', ') || env.AI_MODEL,
       generatedAt: now.toISOString(),
       chunks: work.length,
       ocrPages: request.scans.map((scan) => scan.page),

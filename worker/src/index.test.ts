@@ -272,6 +272,54 @@ describe('POST /api/analyze', () => {
   });
 });
 
+describe('wybór modelu', () => {
+  it('GET /api/models zwraca dozwolone modele', async () => {
+    const response = await handleRequest(
+      new Request('https://api.example/api/models', { headers: { Origin: ORIGIN } }),
+      env({ AI_FALLBACK_MODELS: 'backup-a, backup-b,test-model' }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
+    expect(await response.json()).toEqual({ models: ['test-model', 'backup-a', 'backup-b'] });
+  });
+
+  it('używa modelu wybranego przez użytkownika, jeśli jest na liście', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(completion(modelOutput())));
+    vi.stubGlobal('fetch', fetchMock);
+    const response = await handleRequest(
+      analyzeRequest({ ...validBody, model: 'backup-b' }, ORIGIN, freshIp()),
+      env({ AI_FALLBACK_MODELS: 'backup-a,backup-b' }),
+    );
+    expect(response.status).toBe(200);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(String(init.body)).toContain('"model":"backup-b"');
+  });
+
+  it('ignoruje model spoza listy dozwolonych', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(completion(modelOutput())));
+    vi.stubGlobal('fetch', fetchMock);
+    await handleRequest(
+      analyzeRequest({ ...validBody, model: 'expensive-pro-model' }, ORIGIN, freshIp()),
+      env(),
+    );
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(String(init.body)).toContain('"model":"test-model"');
+  });
+
+  it('przechodzi do kolejnego modelu, gdy model zwraca 404 (wycofany)', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('not found', { status: 404 }))
+      .mockResolvedValueOnce(completion(modelOutput()));
+    vi.stubGlobal('fetch', fetchMock);
+    const response = await handleRequest(
+      analyzeRequest(validBody, ORIGIN, freshIp()),
+      env({ AI_FALLBACK_MODELS: 'backup-a' }),
+    );
+    expect(response.status).toBe(200);
+  });
+});
+
 describe('GET /api/health', () => {
   it('zwraca ok', async () => {
     const response = await handleRequest(new Request('https://api.example/api/health'), env());

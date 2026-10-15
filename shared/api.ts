@@ -33,7 +33,16 @@ export const analyzeRequestSchema = z.object({
   pageCount: z.number().int().positive().max(5000),
   pages: z.array(pageTextSchema).max(5000),
   scans: z.array(scanSchema).max(LIMITS.maxScanPages),
+  /** Preferowany model AI — backend akceptuje tylko modele z własnej listy dozwolonych. */
+  model: z.string().trim().min(1).max(100).optional(),
 });
+
+export const modelsResponseSchema = z.object({
+  /** Dozwolone modele w kolejności domyślnej (pierwszy = główny, reszta = zapasowe). */
+  models: z.array(z.string()).min(1),
+});
+
+export type ModelsResponse = z.infer<typeof modelsResponseSchema>;
 
 export type AnalyzeRequest = z.infer<typeof analyzeRequestSchema>;
 export type PageText = z.infer<typeof pageTextSchema>;

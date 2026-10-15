@@ -2,12 +2,14 @@ import { LIMITS, analyzeRequestSchema } from '../../shared/api.ts';
 import { analyzeDocument } from './analyze.ts';
 import type { Env } from './env.ts';
 import { HttpError, corsHeaders, errorResponse, json, parseAllowedOrigins } from './http.ts';
+import { modelChain } from './llm.ts';
 import { checkRateLimit } from './rateLimit.ts';
 
 /**
  * PDF Insight API (Cloudflare Worker) — proxy do LLM, które trzyma klucz API po stronie serwera.
  *
  *   GET  /api/health   → { ok: true }
+ *   GET  /api/models   → { models: string[] } (dozwolone modele; pierwszy = domyślny)
  *   POST /api/analyze  → Insight (schemat z shared/schema.ts)
  *
  * Zabezpieczenia: CORS tylko dla originów z ALLOWED_ORIGINS, limit żądań per IP,
@@ -71,6 +73,9 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
   try {
     if (url.pathname === '/api/health' && request.method === 'GET') {
       return json({ ok: true }, 200, cors);
+    }
+    if (url.pathname === '/api/models' && request.method === 'GET') {
+      return json({ models: modelChain(env) }, 200, cors);
     }
     if (url.pathname !== '/api/analyze') {
       throw new HttpError(404, 'BAD_REQUEST', 'Nie znaleziono.');
