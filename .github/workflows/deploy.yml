@@ -42,8 +42,9 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Adres Workera ustawiany w Settings → Secrets and variables → Actions → Variables.
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          # Adres Workera (publiczny — i tak trafia do kodu strony). Można nadpisać zmienną
+          # repozytorium VITE_API_URL (Settings → Secrets and variables → Actions → Variables).
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://pdf-insight-api.xsajdq.workers.dev' }}
           VITE_BASE: /${{ github.event.repository.name }}/
       - uses: actions/upload-pages-artifact@v3
         with:
