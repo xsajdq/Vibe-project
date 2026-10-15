@@ -41,6 +41,18 @@ Każdy fragment kodu przejrzałem i rozumiem — opis decyzji w [README.md](READ
 | 7   | **Niewidoczne twarde spacje (U+00A0) wpisane dosłownie w wyrażenia regularne.**                                                                                                                                                                      | ESLint (`no-irregular-whitespace`).                                                                    | Zamiana na sekwencje ` ` / ` `.                                                                                                                                      |
 | 8   | **Mock w teście współdzielił jeden obiekt `Response`** (drugi odczyt ciała się nie udawał), co przy okazji ujawniło brak obsługi nieczytelnej (nie-JSON) odpowiedzi dostawcy — kończyła się ogólnym błędem 500.                                      | Nieoczekiwany status 500 w teście.                                                                     | Nowa odpowiedź przy każdym wywołaniu mocka + jawna obsługa nie-JSON-owej odpowiedzi dostawcy (502 z komunikatem).                                                    |
 
+### Kolejne iteracje (po wdrożeniu)
+
+- **Model z dokumentacji nie działał na żywo.** `gemini-3.8-flash` nie odpowiadał (timeout 50 s),
+  potem `gemini-2.5-flash` działał z GitHub Actions, ale z Cloudflare zwracał 404. Zamiast zgadywać,
+  dodałem workflow diagnostyczny (`ai-check.yml`) mierzący status i czas każdego modelu, a w kodzie:
+  wybór modelu w UI (lista z backendu), automatyczne przełączanie na kolejny model przy 404/429/5xx/
+  timeoucie oraz pole `meta.model` pokazujące, który model faktycznie odpowiedział.
+- **Redesign UI** w ciemnym stylu inspirowanym wiszniewsky.pl: AI wygenerowało układ, a test na 360 px
+  wykazał poziome przewijanie — animowany pas z tekstem jako element flex rozpychał stronę
+  (`min-width: auto`), a długie słowa w nagłówkach (Syne) rozszerzały kolumnę grida. Poprawka:
+  `min-width: 0` i `minmax(0, 1fr)`. Podniosłem też kontrast przygaszonego tekstu do WCAG AA.
+
 ## Wnioski
 
 - Najwięcej realnych błędów wyłapały **testy uruchamiane od razu po wygenerowaniu kodu** oraz

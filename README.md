@@ -66,8 +66,11 @@ worker/            backend (Cloudflare Worker)
   wbudowany Rate Limiting binding, deploy z GitHub Actions.
 - **Ekstrakcja tekstu w przeglądarce, nie na serwerze** — do API trafia tylko tekst (dziesiątki KB
   zamiast 10 MB pliku), co jest szybsze i mieści się w limitach CPU Workera.
-- **Model zapasowy** — darmowe modele bywają przeciążone (HTTP 503 / brak odpowiedzi); Worker
-  automatycznie przełącza się wtedy na kolejny model z `AI_FALLBACK_MODELS`.
+- **Wybór modelu + model zapasowy** — darmowe modele Gemini bywają przeciążone (HTTP 503 / brak
+  odpowiedzi) albo niedostępne z danej infrastruktury (404). Użytkownik może wybrać model w UI
+  („Automatycznie” lub konkretny — także na ekranie błędu przed ponowieniem), a Worker przy błędzie
+  przejściowym sam próbuje kolejnych modeli. Lista modeli pochodzi z backendu (`GET /api/models`,
+  zmienne `AI_MODEL` + `AI_FALLBACK_MODELS`) — klient nie może wymusić modelu spoza tej listy.
 - **Gemini przez endpoint zgodny z OpenAI** — darmowy limit, model multimodalny (OCR skanów bez
   dodatkowych bibliotek), structured output. Zmiana dostawcy (np. Groq, OpenRouter) to tylko
   zmienne `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY` — bez zmian w kodzie.
@@ -80,6 +83,8 @@ worker/            backend (Cloudflare Worker)
 - **Długie dokumenty (map → reduce):** fragmenty analizowane równolegle; listy (kwoty, daty,
   podmioty) łączone deterministycznie w kodzie, a podsumowanie i punkty kluczowe — przez jedno
   dodatkowe wywołanie modelu na podstawie wyników częściowych.
+- **Wygląd** — ciemny, „techniczny” motyw (neonowa limonka, Syne / Oswald / JetBrains Mono, okno
+  terminala jako strefa uploadu, pasek statusu z dostępnością API). Fonty z Google Fonts.
 - **Brak routera** — aplikacja ma jeden widok, więc nie ma problemu z odświeżaniem podstron na GitHub
   Pages (HashRouter / 404.html niepotrzebne). `base` w `vite.config.ts` = `/<repo>/`, worker
   `pdf.js` importowany przez `?url`, więc Vite nadaje mu poprawną ścieżkę.
@@ -122,16 +127,16 @@ Skrypty: `npm run lint`, `npm run format:check`, `npm run typecheck`, `npm test`
 
 ### Zmienne środowiskowe
 
-| Zmienna               | Gdzie                    | Opis                                                                     |
-| --------------------- | ------------------------ | ------------------------------------------------------------------------ |
-| `VITE_API_URL`        | frontend (build)         | adres Workera, np. `https://pdf-insight-api.<konto>.workers.dev`         |
-| `VITE_BASE`           | frontend (build)         | opcjonalnie; domyślnie `/Vibe-project/`, w CI ustawiane z nazwy repo     |
-| `AI_API_KEY`          | Worker — **secret**      | klucz API dostawcy LLM                                                   |
-| `AI_BASE_URL`         | Worker (`wrangler.toml`) | endpoint zgodny z OpenAI; domyślnie Gemini `…/v1beta/openai`             |
-| `AI_MODEL`            | Worker (`wrangler.toml`) | domyślnie `gemini-2.5-flash`                                             |
-| `AI_FALLBACK_MODELS`  | Worker (`wrangler.toml`) | modele zapasowe (CSV) przy przeciążeniu/limicie; `gemini-3.5-flash-lite` |
-| `AI_REASONING_EFFORT` | Worker (`wrangler.toml`) | `low` — krótszy czas odpowiedzi                                          |
-| `ALLOWED_ORIGINS`     | Worker                   | dozwolone originy (CSV); w CI: `https://<właściciel>.github.io`          |
+| Zmienna               | Gdzie                    | Opis                                                                   |
+| --------------------- | ------------------------ | ---------------------------------------------------------------------- |
+| `VITE_API_URL`        | frontend (build)         | adres Workera, np. `https://pdf-insight-api.<konto>.workers.dev`       |
+| `VITE_BASE`           | frontend (build)         | opcjonalnie; domyślnie `/Vibe-project/`, w CI ustawiane z nazwy repo   |
+| `AI_API_KEY`          | Worker — **secret**      | klucz API dostawcy LLM                                                 |
+| `AI_BASE_URL`         | Worker (`wrangler.toml`) | endpoint zgodny z OpenAI; domyślnie Gemini `…/v1beta/openai`           |
+| `AI_MODEL`            | Worker (`wrangler.toml`) | model domyślny: `gemini-3.5-flash-lite` (najszybszy w testach)         |
+| `AI_FALLBACK_MODELS`  | Worker (`wrangler.toml`) | modele zapasowe / do wyboru (CSV): `gemini-3.6-flash,gemini-3.5-flash` |
+| `AI_REASONING_EFFORT` | Worker (`wrangler.toml`) | `low` — krótszy czas odpowiedzi                                        |
+| `ALLOWED_ORIGINS`     | Worker                   | dozwolone originy (CSV); w CI: `https://<właściciel>.github.io`        |
 
 ## Wdrożenie (GitHub Actions)
 
@@ -163,6 +168,9 @@ Jednorazowa konfiguracja repozytorium:
 
 ## Znane ograniczenia
 
+- **Dostępność modeli Gemini się zmienia** — w testach `gemini-3.8-flash` nie odpowiadał (przeciążenie
+  darmowego planu), a `gemini-2.5-flash` zwracał 404 przy wywołaniu z Cloudflare. Listę modeli
+  zmienia się w `worker/wrangler.toml`; diagnostykę daje workflow `ai-check.yml`.
 - **Darmowy plan Gemini** ma niskie limity zapytań — przy wielu użytkownikach naraz może pojawić się
   komunikat o chwilowym limicie (aplikacja pokazuje go z opcją ponowienia). W darmowym planie Google
   może wykorzystywać przesłane treści — w UI jest o tym informacja.
