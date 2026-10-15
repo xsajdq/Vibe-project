@@ -20,6 +20,7 @@ jobs:
       AI_API_KEY: ${{ secrets.AI_API_KEY }}
       BASE: https://generativelanguage.googleapis.com/v1beta/openai
     steps:
+      - uses: actions/checkout@v4
       - name: Key present
         run: '[ -n "$AI_API_KEY" ] && echo "AI_API_KEY: ustawiony (${#AI_API_KEY} znaków)" || echo "AI_API_KEY: BRAK"'
 
