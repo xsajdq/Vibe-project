@@ -1,0 +1,57 @@
+name: Deploy API (Cloudflare Worker)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - 'shared/**'
+      - 'package-lock.json'
+      - '.github/workflows/worker.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Test & deploy worker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+      - name: Check Cloudflare secrets
+        id: check
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::warning::Brak sekretu CLOUDFLARE_API_TOKEN — pomijam deploy Workera (patrz README)."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Klucz AI trafia do Cloudflare jako secret Workera — nigdy do kodu ani do builda frontendu.
+      - name: Deploy
+        if: steps.check.outputs.enabled == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.151.0'
+          command: deploy --config worker/wrangler.toml --var ALLOWED_ORIGINS:https://${{ github.repository_owner }}.github.io
+          secrets: |
+            AI_API_KEY
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
