@@ -44,6 +44,13 @@ export const modelsResponseSchema = z.object({
 
 export type ModelsResponse = z.infer<typeof modelsResponseSchema>;
 
+/**
+ * Domyślna lista modeli (jak AI_MODEL + AI_FALLBACK_MODELS w worker/wrangler.toml) — pokazywana,
+ * zanim przyjdzie lista z backendu lub gdy API jest chwilowo nieosiągalne. Backend i tak
+ * akceptuje tylko modele z własnej konfiguracji.
+ */
+export const DEFAULT_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash'];
+
 export type AnalyzeRequest = z.infer<typeof analyzeRequestSchema>;
 export type PageText = z.infer<typeof pageTextSchema>;
 export type Scan = z.infer<typeof scanSchema>;

@@ -61,7 +61,7 @@ export async function analyzeDocument(
       throw new AppError('Analiza trwa zbyt długo. Spróbuj ponownie za chwilę.', true);
     }
     throw new AppError(
-      'Brak połączenia z serwerem analizy. Sprawdź internet i spróbuj ponownie.',
+      'Brak połączenia z serwerem analizy. Sprawdź internet i spróbuj ponownie. Jeśli problem się powtarza, wyłącz bloker reklam dla tej strony lub zmień sieć — część filtrów blokuje domenę workers.dev.',
       true,
     );
   }

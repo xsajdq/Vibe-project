@@ -4,6 +4,8 @@ interface Props {
   models: string[];
   selected: string | null;
   onSelect: (model: string | null) => void;
+  /** false = lista domyślna (API jeszcze nie odpowiedziało). */
+  fromApi?: boolean;
   compact?: boolean;
 }
 
@@ -11,7 +13,13 @@ interface Props {
  * Wybór modelu Gemini. „Automatycznie” = model domyślny backendu, a przy jego
  * przeciążeniu kolejne z listy. Wybrany model jest próbowany jako pierwszy.
  */
-export function ModelPicker({ models, selected, onSelect, compact = false }: Props) {
+export function ModelPicker({
+  models,
+  selected,
+  onSelect,
+  fromApi = true,
+  compact = false,
+}: Props) {
   const id = useId();
   if (models.length === 0) return null;
 
@@ -37,7 +45,9 @@ export function ModelPicker({ models, selected, onSelect, compact = false }: Pro
       </div>
       {!compact && (
         <p className="hint">
-          Jeśli wybrany model jest przeciążony, aplikacja sama spróbuje kolejnego.
+          {fromApi
+            ? 'Jeśli wybrany model jest przeciążony, aplikacja sama spróbuje kolejnego.'
+            : 'Lista domyślna — nie udało się jeszcze połączyć z serwerem analizy.'}
         </p>
       )}
     </div>

@@ -8,7 +8,7 @@ interface Props {
 const STATUS_LABEL: Record<ApiStatus, string> = {
   checking: 'Sprawdzanie API…',
   online: 'Wszystkie systemy sprawne',
-  offline: 'API niedostępne',
+  offline: 'API niedostępne — sprawdź bloker reklam / sieć',
 };
 
 /** Pasek statusu w stylu terminala: dostępność backendu, model i limity. */

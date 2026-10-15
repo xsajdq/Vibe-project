@@ -16,11 +16,13 @@ import { useModels } from './lib/useModels.ts';
 export function App() {
   const [history, setHistory] = useState(() => loadHistory());
   const onSuccess = useCallback((insight: Insight) => setHistory(addToHistory(insight)), []);
-  const { models, selected, select } = useModels();
   const apiStatus = useApiStatus();
+  const { models, fromApi, selected, select } = useModels(apiStatus);
   const { state, analyze, retry, reset, reject, show } = useAnalysis(onSuccess, selected);
 
-  const picker = <ModelPicker models={models} selected={selected} onSelect={select} />;
+  const picker = (
+    <ModelPicker models={models} selected={selected} onSelect={select} fromApi={fromApi} />
+  );
 
   return (
     <div className="shell">
