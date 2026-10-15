@@ -1,0 +1,27 @@
+name = "pdf-insight-api"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+# Brak logowania treści — observability tylko dla metryk/błędów.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[vars]
+AI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
+AI_MODEL = "gemini-3.8-flash"
+AI_REASONING_EFFORT = "low"
+# Tylko domena demo (GitHub Pages). Dla dev lokalnego nadpisz w worker/.dev.vars.
+ALLOWED_ORIGINS = "https://xsajdq.github.io"
+
+# Limit żądań per IP (Cloudflare Rate Limiting binding): 8 analiz / 60 s.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 8
+  period = 60
+
+# Sekret (NIE w repo): npx wrangler secret put AI_API_KEY --config worker/wrangler.toml
