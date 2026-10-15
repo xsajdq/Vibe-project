@@ -700,3 +700,8 @@ h4 {
     grid-template-columns: 1fr;
   }
 }
+
+/* Fokus programowy (przeniesienie fokusu na nagłówek wyniku/błędu) — bez ramki. */
+[tabindex='-1']:focus {
+  outline: none;
+}
